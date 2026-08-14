@@ -554,6 +554,89 @@
     @keyframes spinSlow {
       to { transform: rotate(360deg); }
     }
+
+/* === 悬浮公告 === */
+.floating-notice {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 18px 28px 20px;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: #fff;
+  max-width: 88%;
+  min-width: 200px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.floating-notice.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+.floating-notice .notice-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  background: linear-gradient(90deg, #fe2c55, #ff6b81);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.floating-notice .notice-body {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.3px;
+  white-space: pre-line;
+  word-break: break-word;
+}
+.floating-notice .notice-close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  cursor: pointer;
+  opacity: 0.3;
+  font-size: 16px;
+  transition: opacity 0.2s;
+  pointer-events: auto;
+  font-weight: 300;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
+}
+.floating-notice .notice-close:hover {
+  opacity: 0.8;
+}
+@media (max-width: 480px) {
+  .floating-notice {
+    top: 68px;
+    padding: 14px 18px 16px;
+    max-width: 94%;
+    border-radius: 14px;
+    min-width: unset;
+  }
+  .floating-notice .notice-title {
+    font-size: 15px;
+  }
+  .floating-notice .notice-body {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .floating-notice .notice-close {
+    top: 8px;
+    right: 10px;
+    font-size: 14px;
+  }
+}
   </style>
 </head>
 <body>
@@ -586,9 +669,8 @@
   <script>
     // ============================================================
     // 数据格式：视频用 url，图片用 images（逗号分隔）
-    // 完全兼容您现有的资源库格式
     // ============================================================
-    const videoList = [
+const videoList = [
      { title: "白丝萝莉小学妹", desc: "穿着性感长筒白丝被抽插", url: "https://4x1.ekcvn.com/duanpian/wanghongshipin/m3u8/202607/%E8%90%9D%E8%8E%89%E5%AD%A6%E5%A6%B9%EF%BC%8C%E8%A1%A8%E9%9D%A2%E5%8D%95%E7%BA%AF%E7%9A%84%E8%90%8C%E5%A6%B9%E5%AD%90%EF%BC%8C%E7%A7%81%E5%BA%95%E4%B8%8B%E5%8D%B4%E7%A9%BF%E7%9D%80%E6%80%A7%E6%84%9F%E9%95%BF%E7%AD%92%E8%A2%9C%E8%A2%AB%E4%BA%BA%E6%93%8D/%E8%90%9D%E8%8E%89%E5%AD%A6%E5%A6%B9%EF%BC%8C%E8%A1%A8%E9%9D%A2%E5%8D%95%E7%BA%AF%E7%9A%84%E8%90%8C%E5%A6%B9%E5%AD%90%EF%BC%8C%E7%A7%81%E5%BA%95%E4%B8%8B%E5%8D%B4%E7%A9%BF%E7%9D%80%E6%80%A7%E6%84%9F%E9%95%BF%E7%AD%92%E8%A2%9C%E8%A2%AB%E4%BA%BA%E6%93%8D.m3u8", likes: 780 },
       { title: "苗条女孩的女上位", desc: "淫语不断", url: "https://1x1.ekcvn.com/duanpian/guochanzhubo/m3u8/202012/%E8%8B%97%E6%9D%A1%E7%94%B5%E5%8F%AC%E5%A5%B3%E6%B8%85%E7%BA%AF%E8%A3%85%E6%9D%9F%E5%A5%B3%E4%B8%8A%E4%BD%8D%E8%82%89%E8%82%8F%E5%95%AA%E5%95%AA%E6%B7%AB%E8%AF%AD%E5%8A%A9%E6%80%A7%E5%A8%87%E5%96%98%E6%B5%AA%E5%8F%AB/%E8%8B%97%E6%9D%A1%E7%94%B5%E5%8F%AC%E5%A5%B3%E6%B8%85%E7%BA%AF%E8%A3%85%E6%9D%9F%E5%A5%B3%E4%B8%8A%E4%BD%8D%E8%82%89%E8%82%8F%E5%95%AA%E5%95%AA%E6%B7%AB%E8%AF%AD%E5%8A%A9%E6%80%A7%E5%A8%87%E5%96%98%E6%B5%AA%E5%8F%AB.m3u8", likes: 98 },
       { title: "韩国主播助导", desc: "唾液分泌，超绝舌头", url: "https://3x1.ekcvn.com/duanpian/wanghongshipin/m3u8/202402/%E5%94%BE%E6%B6%B2%E5%88%86%E6%B3%8C%EF%BC%8C%E8%B6%85%E7%94%9C%E8%90%9D%E8%8E%89%EF%BC%8C%E7%9C%9F%E6%83%B3%E5%B0%84%E5%A5%B9%E4%B8%80%E5%98%B4%E7%B2%BE%E6%B6%B2/%E5%94%BE%E6%B6%B2%E5%88%86%E6%B3%8C%EF%BC%8C%E8%B6%85%E7%94%9C%E8%90%9D%E8%8E%89%EF%BC%8C%E7%9C%9F%E6%83%B3%E5%B0%84%E5%A5%B9%E4%B8%80%E5%98%B4%E7%B2%BE%E6%B6%B2.m3u8", likes: 256 },
@@ -697,10 +779,11 @@
        { title: "粉嫩小妹妹", desc: "", images: "https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/13.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/14.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/15.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/16.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/18.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/19.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/20.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/23.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/26.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/29.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/5.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/8.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E7%A7%81%E4%BA%BA%E7%8E%A9%E7%89%A9_%E4%B8%BB%E4%BA%BA%E7%9A%84%E6%80%A7%E6%84%9F%E7%8E%A9%E7%89%A9/9.jpg", likes: 28 }, 
       { title: "少妇的韵味", desc: "少妇的身材还是很不错的，有滋有味", images: "https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/1.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/11.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/12.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/13.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/16.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/15.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/17.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/19.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/20.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/23.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/4.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/5.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B0%91%E5%A6%87%E7%9A%84%E8%BA%AB%E6%9D%90%E8%BF%98%E6%98%AF%E6%AF%94%E8%BE%83%E9%B2%9C%E5%AB%A9%E8%BF%B7%E4%BA%BA/8.jpg", likes: 83 }, 
       { title: "你不知道我的好", desc: "万一你还会喜欢呢", images: "https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/11.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/10.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/1.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/13.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/14.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/15.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/16.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/17.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/2.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/20.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/2.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/23.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/27.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/28.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/3.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/5.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/4.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/7.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/201912/%E5%B8%8C%E6%9C%9B%E4%BD%A0%E4%B8%8A%E6%88%91%E7%9A%84%E6%97%B6%E5%80%99%E7%9C%BC%E9%87%8C%E5%8F%AA%E6%9C%89%E6%88%91_%E6%97%A0%E5%85%B3%E9%A3%8E%E6%99%AF%E9%AA%9A%E9%AA%9A%E7%9A%84%E5%A5%B6%E5%AD%90%E9%80%81%E7%BB%99%E6%B2%A1%E7%9D%A1%E7%9A%84%E4%BD%A0__/9.jpg", likes: 281 }, 
-      { title: "大长腿美女", desc: "", images: "https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/1.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/10.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/11.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/12.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/13.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/14.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/16.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/17.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/18.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/2.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/20.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/21.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/22.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/25.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/26.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/27.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/27.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/32.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/33.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/34.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/7.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/6.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/5.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/9.jpg", likes: 827 },
+      { title: "大长腿美女", desc: "", images: "https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/12.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/13.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/14.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/16.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/17.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/18.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/2.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/20.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/21.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/22.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/25.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/26.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/27.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/27.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/32.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/33.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/34.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/7.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/6.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/5.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%A5%BD%E8%BA%AB%E6%9D%90_%E7%A7%80%E5%87%BA%E6%9D%A5/9.jpg", likes: 827 },
       { title: "水手极品美女", desc: "", images: "https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/10.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/11.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/12.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/13.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/14.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/15.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/3.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/4.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/45_m.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/7.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/8.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202002/%E5%8F%AF%E7%88%B1%E5%A6%B9%E5%AD%90%E8%AE%A9%E4%BA%BA%E6%AC%B2%E7%BD%A2%E4%B8%8D%E8%83%BD/8.jpg", likes: 833 },
       { title: "湿身诱惑", desc: "我是你的小猫咪，不想只要黄瓜，哥哥～", images: "https://tcx892pc.bvpxn77r.com/meinvtupian/202001/%E6%88%91%E6%98%AF%E4%BD%A0%E5%8F%AF%E6%84%9B%E7%9A%84%E5%B0%8F%E8%B2%93_%E6%B2%92%E6%9C%89%E7%94%B7%E6%9C%8B%E5%8F%8B_%E5%8F%AA%E8%83%BD%E9%BB%83%E7%93%9C/1.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202001/%E6%88%91%E6%98%AF%E4%BD%A0%E5%8F%AF%E6%84%9B%E7%9A%84%E5%B0%8F%E8%B2%93_%E6%B2%92%E6%9C%89%E7%94%B7%E6%9C%8B%E5%8F%8B_%E5%8F%AA%E8%83%BD%E9%BB%83%E7%93%9C/10.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202001/%E6%88%91%E6%98%AF%E4%BD%A0%E5%8F%AF%E6%84%9B%E7%9A%84%E5%B0%8F%E8%B2%93_%E6%B2%92%E6%9C%89%E7%94%B7%E6%9C%8B%E5%8F%8B_%E5%8F%AA%E8%83%BD%E9%BB%83%E7%93%9C/11.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202001/%E6%88%91%E6%98%AF%E4%BD%A0%E5%8F%AF%E6%84%9B%E7%9A%84%E5%B0%8F%E8%B2%93_%E6%B2%92%E6%9C%89%E7%94%B7%E6%9C%8B%E5%8F%8B_%E5%8F%AA%E8%83%BD%E9%BB%83%E7%93%9C/12.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202001/%E6%88%91%E6%98%AF%E4%BD%A0%E5%8F%AF%E6%84%9B%E7%9A%84%E5%B0%8F%E8%B2%93_%E6%B2%92%E6%9C%89%E7%94%B7%E6%9C%8B%E5%8F%8B_%E5%8F%AA%E8%83%BD%E9%BB%83%E7%93%9C/13.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202001/%E6%88%91%E6%98%AF%E4%BD%A0%E5%8F%AF%E6%84%9B%E7%9A%84%E5%B0%8F%E8%B2%93_%E6%B2%92%E6%9C%89%E7%94%B7%E6%9C%8B%E5%8F%8B_%E5%8F%AA%E8%83%BD%E9%BB%83%E7%93%9C/2.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202001/%E6%88%91%E6%98%AF%E4%BD%A0%E5%8F%AF%E6%84%9B%E7%9A%84%E5%B0%8F%E8%B2%93_%E6%B2%92%E6%9C%89%E7%94%B7%E6%9C%8B%E5%8F%8B_%E5%8F%AA%E8%83%BD%E9%BB%83%E7%93%9C/3.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202001/%E6%88%91%E6%98%AF%E4%BD%A0%E5%8F%AF%E6%84%9B%E7%9A%84%E5%B0%8F%E8%B2%93_%E6%B2%92%E6%9C%89%E7%94%B7%E6%9C%8B%E5%8F%8B_%E5%8F%AA%E8%83%BD%E9%BB%83%E7%93%9C/6.jpg,https://tcx892pc.bvpxn77r.com/meinvtupian/202001/%E6%88%91%E6%98%AF%E4%BD%A0%E5%8F%AF%E6%84%9B%E7%9A%84%E5%B0%8F%E8%B2%93_%E6%B2%92%E6%9C%89%E7%94%B7%E6%9C%8B%E5%8F%8B_%E5%8F%AA%E8%83%BD%E9%BB%83%E7%93%9C/9.jpg", likes: 87 },
     ];
+
 
     function shuffleArray(arr) {
       const a = [...arr];
@@ -1358,7 +1441,6 @@
     function showHeart(index) {
       const item = allVideos[index];
       if (!item) return;
-      // 图片模式不显示爱心动画
       if (item.isImage) return;
       const heart = item.heart;
       heart.style.animation = 'none';
@@ -1473,8 +1555,6 @@
       lastScrollTop = scrollTop;
     });
 
-    // 已删除无限循环滚动机制
-
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         allVideos.forEach(item => { if (!item.isImage && item.video) item.video.pause(); });
@@ -1484,7 +1564,35 @@
     window.addEventListener('pagehide', () => {
       hlsInstances.forEach(h => { if (h) h.destroy(); });
     });
+
+// === 悬浮公告：页面加载后立即显示，6秒后自动消失 ===
+document.addEventListener('DOMContentLoaded', function() {
+  const notice = document.getElementById('floatingNotice');
+  if (notice) {
+    notice.classList.add('show');
+    setTimeout(function() {
+      notice.classList.remove('show');
+    }, 6000);
+  }
+});
+
+// 点击 ✕ 立即关闭
+document.getElementById('noticeClose').addEventListener('click', function(e) {
+  e.stopPropagation();
+  document.getElementById('floatingNotice').classList.remove('show');
+});
+    document.getElementById('noticeClose').addEventListener('click', function(e) {
+      e.stopPropagation();
+      document.getElementById('floatingNotice').classList.remove('show');
+    });
   </script>
+
+<!-- 悬浮公告 -->
+<div class="floating-notice" id="floatingNotice">
+  <span class="notice-close" id="noticeClose">✕</span>
+  <div class="notice-title" id="noticeTitle">❤ 🔞 公告 🔞 ❤</div>
+  <div class="notice-body" id="noticeBody">欢迎来到果粒精选！<br><br>本网站旨在提供简洁快捷、无广告的体验环境<br>感谢大家的陪伴与支持<br><br><br>精彩内容拼命加载中，<br>请耐心稍等片刻...</div>
+</div>
 
   <div class="refresh-overlay" id="refreshOverlay">
     <div class="refresh-spinner"></div>
