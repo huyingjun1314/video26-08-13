@@ -1,0 +1,2537 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>果粒精选</title>
+  <script src="https://cdn.bootcdn.net/ajax/libs/hls.js/1.4.12/hls.min.js">
+  </script>
+  <style>
+    /* ===== 基础样式 ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background: #000;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: pan-y;
+      overscroll-behavior: none;
+    }
+    .feed-container {
+      height: 100vh;
+      width: 100%;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scroll-snap-stop: always;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .feed-container::-webkit-scrollbar {
+      display: none;
+    }
+    .video-slide {
+      position: relative;
+      height: 100vh;
+      width: 100%;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      contain: layout style paint;
+      will-change: transform;
+    }
+    .video-slide video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #000;
+      decoding: "async";
+    }
+    .pause-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.5);
+      opacity: 0;
+      z-index: 4;
+      pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      will-change: transform, opacity;
+    }
+    .pause-icon.visible {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .pause-icon.hiding {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(1.5);
+      transition: all 0.2s ease-out;
+    }
+    .pause-circle {
+      width: 72px;
+      height: 72px;
+      background: rgba(0, 0, 0, 0.55);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+    .pause-triangle {
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 14px 0 14px 24px;
+      border-color: transparent transparent transparent #ffffff;
+      margin-left: 4px;
+      filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    }
+    .speed-indicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      opacity: 0;
+      z-index: 4;
+      pointer-events: none;
+      transition: all 0.2s ease;
+      will-change: transform, opacity;
+    }
+    .speed-indicator.visible {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .speed-indicator span {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(20, 20, 20, 0.85);
+      color: #fff;
+      font-size: 30px;
+      font-weight: 800;
+      padding: 12px 26px;
+      border-radius: 32px;
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+      letter-spacing: 1px;
+    }
+    .speed-indicator .speed-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      animation: speedPulse 1s ease-in-out infinite;
+    }
+    @keyframes speedPulse {
+      0%,
+      100% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.15);
+      }
+    }
+    .loading-spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 42px;
+      height: 42px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .loading-spinner.visible {
+      opacity: 1;
+    }
+    @keyframes spin {
+      to {
+        transform: translate(-50%, -50%) rotate(360deg);
+      }
+    }
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 30;
+      padding-top: calc(8px + env(safe-area-inset-top));
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, transparent 100%);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      padding: 8px 16px 8px;
+      gap: 8px;
+    }
+    .top-nav .brand {
+      pointer-events: auto;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+      margin-right: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .top-nav .nav-tabs {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex: 1;
+      justify-content: center;
+    }
+    .top-nav .nav-item {
+      pointer-events: auto;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 0;
+      position: relative;
+      transition: color 0.2s ease;
+      letter-spacing: 0.5px;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
+    .top-nav .nav-item.active {
+      color: #fff;
+    }
+    .top-nav .nav-item .nav-indicator {
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%) scaleX(0);
+      width: 18px;
+      height: 3px;
+      background: #fe2c55;
+      border-radius: 999px;
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .top-nav .nav-item.active .nav-indicator {
+      transform: translateX(-50%) scaleX(1);
+    }
+    .top-nav .search-btn {
+      pointer-events: auto;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: #fff;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      touch-action: manipulation;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      flex-shrink: 0;
+    }
+    .top-nav .search-btn:active {
+      transform: scale(0.92);
+    }
+    .top-nav .search-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+    .slide-info {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 100px 20px 30px;
+      padding-bottom: calc(30px + env(safe-area-inset-bottom));
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 100%);
+      color: #fff;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .slide-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      letter-spacing: 0.5px;
+    }
+    .slide-desc {
+      font-size: 15px;
+      line-height: 1.5;
+      color: rgba(255, 255, 255, 0.9);
+      max-width: 80%;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+      white-space: pre-line;
+      margin-bottom: 12px;
+    }
+    .progress-container {
+      pointer-events: auto;
+      width: 80%;
+      margin-top: 10px;
+      position: relative;
+      height: 36px;
+      display: flex;
+      align-items: center;
+    }
+    .progress-track {
+      position: relative;
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), background 0.3s ease, box-shadow 0.3s ease;
+      padding: 12px 0;
+    }
+    .progress-container:hover .progress-track,
+    .progress-container:active .progress-track,
+    .progress-track.dragging {
+      height: 5px;
+      background: rgba(255, 255, 255, 0.25);
+      box-shadow: 0 0 12px rgba(254, 44, 85, 0.3);
+    }
+    .progress-buffer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.2);
+      width: 0%;
+      pointer-events: none;
+    }
+    .progress-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #fe2c55, #ff4d6d, #ff6b81);
+      width: 0%;
+      pointer-events: none;
+    }
+    .progress-thumb {
+      position: absolute;
+      top: 50%;
+      width: 0;
+      height: 0;
+      background: #fff;
+      border-radius: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      box-shadow: 0 0 12px rgba(254, 44, 85, 0.6), 0 2px 6px rgba(0, 0, 0, 0.3);
+      pointer-events: none;
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      left: 0%;
+    }
+    .progress-container:active .progress-thumb,
+    .progress-thumb.dragging {
+      width: 14px;
+      height: 14px;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    .progress-time-tooltip {
+      position: absolute;
+      top: -38px;
+      background: rgba(15, 15, 15, 0.92);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+      transform: translateX(-50%) scale(0.8);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    }
+    .progress-time-tooltip::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 5px solid rgba(15, 15, 15, 0.92);
+    }
+    .progress-time-tooltip.visible {
+      opacity: 1;
+      transform: translateX(-50%) scale(1);
+      top: -38px;
+    }
+    .action-bar {
+      position: absolute;
+      right: 12px;
+      bottom: calc(120px + env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      z-index: 3;
+    }
+    .action-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+      transition: transform 0.1s ease;
+      pointer-events: auto;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .action-btn:active {
+      transform: scale(0.85);
+    }
+    .action-icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    .like-btn.liked .action-icon {
+      background: #fe2c55;
+      color: #fff;
+      animation: pop 0.3s ease;
+    }
+    .like-btn.liked {
+      color: #fe2c55;
+    }
+    @keyframes pop {
+      0% {
+        transform: scale(1);
+      }
+      50% {
+        transform: scale(1.3);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+    .double-heart {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      font-size: 80px;
+      color: #fe2c55;
+      z-index: 5;
+      pointer-events: none;
+      animation: heartBoom 0.6s ease forwards;
+    }
+    @keyframes heartBoom {
+      0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+      }
+      30% {
+        transform: translate(-50%, -50%) scale(1.2);
+        opacity: 1;
+      }
+      60% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(1.5);
+        opacity: 0;
+      }
+    }
+    .mute-btn {
+      position: absolute;
+      right: 12px;
+      bottom: calc(24px + env(safe-area-inset-bottom));
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: #fff;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 3;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      touch-action: manipulation;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    .mute-btn:active {
+      transform: scale(0.92);
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .mute-btn svg {
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+      transition: all 0.2s;
+    }
+    .toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: rgba(20, 20, 20, 0.88);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 14px 28px;
+      border-radius: 12px;
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      z-index: 100;
+      pointer-events: none;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    @media (min-width: 768px) {
+      .feed-container {
+        max-width: 400px;
+        margin: 0 auto;
+        border-left: 1px solid #222;
+        border-right: 1px solid #222;
+      }
+      .slide-info {
+        padding-left: 30px;
+        padding-right: 30px;
+      }
+      .slide-title {
+        font-size: 26px;
+      }
+      .slide-desc {
+        font-size: 16px;
+        max-width: 70%;
+      }
+      .top-nav {
+        max-width: 400px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+    }
+    .refresh-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.88);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .refresh-overlay.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .refresh-spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid rgba(255, 255, 255, 0.15);
+      border-top-color: #fe2c55;
+      border-radius: 50%;
+      animation: refreshSpin 0.8s linear infinite;
+      margin-bottom: 18px;
+      box-shadow: 0 0 20px rgba(254, 44, 85, 0.2);
+    }
+    @keyframes refreshSpin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    .refresh-text {
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 2px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+    .image-gallery {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .image-gallery::-webkit-scrollbar {
+      display: none;
+    }
+    .image-gallery img {
+      flex: 0 0 100%;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .image-progress {
+      pointer-events: auto;
+      width: 80%;
+      margin-top: 10px;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 36px;
+      display: flex;
+      align-items: center;
+    }
+    .image-progress-track {
+      position: relative;
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 999px;
+      overflow: hidden;
+      transition: height 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), background 0.3s ease, box-shadow 0.3s ease;
+      padding: 12px 0;
+    }
+    .image-progress-fill {
+      position: absolute;
+      top: 0;
+      left: 0;
+      height: 100%;
+      background: linear-gradient(90deg, #fe2c55, #ff4d6d, #ff6b81);
+      width: 0%;
+      pointer-events: none;
+      border-radius: 999px;
+    }
+    .image-progress-counter {
+      position: absolute;
+      right: 0;
+      top: -28px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+    }
+    .video-slide:not(.image-mode) .image-gallery,
+    .video-slide:not(.image-mode) .image-progress {
+      display: none !important;
+    }
+    .video-slide.image-mode .slide-info .progress-container {
+      display: none;
+    }
+    .video-slide.hidden-slide {
+      display: none !important;
+    }
+
+    /* ===== 游戏主页面 - 光源毛玻璃效果 ===== */
+    .game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      width: 100%;
+      background: #000;
+      padding: 80px 16px 30px;
+      overflow-y: auto;
+      gap: 16px;
+    }
+    .game-container::-webkit-scrollbar {
+      display: none;
+    }
+    .game-card {
+      width: 100%;
+      max-width: 360px;
+      background: rgba(255, 255, 255, 0.04);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 20px;
+      padding: 20px 24px 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .game-card:active {
+      transform: scale(0.97);
+    }
+    .game-card .game-icon {
+      font-size: 28px;
+      margin-right: 12px;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    .game-card .game-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      display: inline-block;
+      vertical-align: middle;
+      letter-spacing: 0.5px;
+    }
+    .game-card .game-badge {
+      float: right;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.06);
+      padding: 2px 12px;
+      border-radius: 20px;
+      margin-top: 4px;
+    }
+    .game-card .game-desc {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 13px;
+      margin-top: 8px;
+      line-height: 1.5;
+      padding-left: 46px;
+    }
+    .game-card .glow-line {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #fe2c55, #ff6b81, transparent);
+      opacity: 0.3;
+    }
+
+    /* 光源映射 - 跟随鼠标的光晕 */
+    .game-card .card-light {
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at var(--lx, 50%) var(--ly, 50%), rgba(254, 44, 85, 0.08), transparent 50%);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      border-radius: 50%;
+      will-change: transform, opacity;
+    }
+    .game-card:hover .card-light {
+      opacity: 1;
+    }
+    .game-card:active .card-light {
+      opacity: 0.25;
+      transition: opacity 0.05s ease;
+    }
+    /* 边缘光晕 - 模拟光源吸附 */
+    .game-card .card-edge-glow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      border-radius: 20px;
+      pointer-events: none;
+      border: 1px solid transparent;
+      transition: border-color 0.4s ease;
+    }
+    .game-card:hover .card-edge-glow {
+      border-color: rgba(254, 44, 85, 0.15);
+      box-shadow: 0 0 30px rgba(254, 44, 85, 0.04), inset 0 0 30px rgba(254, 44, 85, 0.02);
+    }
+    .game-card .card-click-ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(254, 44, 85, 0.2), transparent 70%);
+      transform: scale(0);
+      animation: cardRipple 0.6s ease-out forwards;
+      pointer-events: none;
+    }
+    @keyframes cardRipple {
+      to {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+
+    /* ===== 游戏播放器 ===== */
+    .game-player-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #000;
+      z-index: 60;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .game-player-overlay.show {
+      display: flex;
+    }
+    .game-player-overlay .game-video-wrapper {
+      position: relative;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #000;
+      padding-top: 70px;
+      padding-bottom: 20px;
+    }
+    .game-player-overlay .game-video-wrapper video {
+      width: 100%;
+      height: auto;
+      max-height: 100%;
+      object-fit: contain;
+      background: #000;
+      flex-shrink: 0;
+      border-radius: 8px;
+    }
+    .game-player-overlay .game-video-wrapper video.landscape {
+      width: 100%;
+      height: auto;
+      max-height: 75vh;
+      object-fit: contain;
+    }
+    .game-player-overlay .game-video-wrapper video.portrait {
+      height: 70vh;
+      width: auto;
+      max-width: 100%;
+      object-fit: contain;
+    }
+
+    /* 游戏顶部导航 - 与主界面导航栏风格一致 */
+    .game-top-nav {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 63;
+      padding-top: calc(8px + env(safe-area-inset-top));
+      padding: 8px 16px 8px;
+      padding-top: calc(8px + env(safe-area-inset-top));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, transparent 100%);
+      pointer-events: none;
+    }
+    .game-top-nav .game-back-btn {
+      pointer-events: auto;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px) saturate(150%);
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      color: #fff;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      touch-action: manipulation;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      flex-shrink: 0;
+      font-size: 16px;
+      font-weight: 300;
+    }
+    .game-top-nav .game-back-btn:active {
+      transform: scale(0.92);
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+    .game-top-nav .game-title-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      padding: 0 8px;
+    }
+    .game-top-nav .game-title-area .game-title-text {
+      color: #fff;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 200px;
+      background: linear-gradient(90deg, #fe2c55, #ff6b81, #fe2c55);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: titleShimmer 3s ease-in-out infinite;
+    }
+    @keyframes titleShimmer {
+      0%,
+      100% {
+        background-position: 0% center;
+      }
+      50% {
+        background-position: 200% center;
+      }
+    }
+    /* 占位元素保持对称 */
+    .game-top-nav .game-nav-placeholder {
+      width: 34px;
+      height: 34px;
+      flex-shrink: 0;
+      pointer-events: none;
+    }
+
+    /* 游戏底部UI */
+    .game-player-overlay .game-ui-overlay {
+      position: absolute;
+      bottom: 40px;
+      left: 0;
+      right: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      z-index: 62;
+      pointer-events: none;
+    }
+    .game-player-overlay .game-ui-overlay .game-btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+      pointer-events: auto;
+      width: 100%;
+      max-width: 400px;
+    }
+    .game-player-overlay .game-ui-overlay .game-btn {
+      position: relative;
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 30px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+      min-width: 80px;
+      text-align: center;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      flex: 1 0 auto;
+      max-width: 200px;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      /* 点击反馈 - 非长按 */
+    }
+    .game-player-overlay .game-ui-overlay .game-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent);
+      border-radius: 30px;
+      pointer-events: none;
+    }
+    /* 点击反馈 - 瞬间缩放 + 光晕扩散 */
+    .game-player-overlay .game-ui-overlay .game-btn:active {
+      transform: scale(0.94);
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), 0 0 30px rgba(254, 44, 85, 0.08);
+      transition: all 0.05s ease;
+    }
+    .game-player-overlay .game-ui-overlay .game-btn.primary {
+      background: rgba(254, 44, 85, 0.15);
+      border-color: rgba(254, 44, 85, 0.2);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(254, 44, 85, 0.1);
+    }
+    .game-player-overlay .game-ui-overlay .game-btn.primary::before {
+      background: linear-gradient(135deg, rgba(254, 44, 85, 0.08), transparent);
+    }
+    .game-player-overlay .game-ui-overlay .game-btn.primary:active {
+      background: rgba(254, 44, 85, 0.25);
+      border-color: rgba(254, 44, 85, 0.35);
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4), 0 0 40px rgba(254, 44, 85, 0.15);
+      transition: all 0.05s ease;
+    }
+    /* 点击波纹 - 点击时瞬间扩散 */
+    .game-player-overlay .game-ui-overlay .game-btn .btn-ripple {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      transform: scale(0);
+      animation: btnRipple 0.5s ease-out forwards;
+      pointer-events: none;
+    }
+    @keyframes btnRipple {
+      0% {
+        transform: scale(0);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(4);
+        opacity: 0;
+      }
+    }
+    .game-player-overlay .game-ui-overlay .game-btn .btn-ripple.primary-ripple {
+      background: rgba(254, 44, 85, 0.25);
+    }
+    .game-player-overlay .game-ui-overlay .game-hint {
+      color: rgba(255, 255, 255, 0.35);
+      font-size: 13px;
+      font-weight: 400;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      pointer-events: none;
+      text-align: center;
+      padding: 0 10px;
+      letter-spacing: 0.3px;
+    }
+
+    /* 浮窗公告 */
+    .floating-notice {
+      position: fixed;
+      top: 76px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      z-index: 50;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(28px) saturate(180%);
+      -webkit-backdrop-filter: blur(28px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 16px;
+      padding: 18px 28px 20px;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+      color: #fff;
+      max-width: 88%;
+      min-width: 200px;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      text-align: center;
+      cursor: pointer;
+    }
+    .floating-notice.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+    .floating-notice .notice-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      background: linear-gradient(90deg, #fe2c55, #ff6b81);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-align: center;
+    }
+    .floating-notice .notice-body {
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.7;
+      color: rgba(255, 255, 255, 0.85);
+      letter-spacing: 0.3px;
+      white-space: pre-line;
+      word-break: break-word;
+      text-align: center;
+    }
+    @media (max-width: 480px) {
+      .floating-notice {
+        top: 68px;
+        padding: 14px 18px 16px;
+        max-width: 94%;
+        border-radius: 14px;
+        min-width: unset;
+      }
+      .floating-notice .notice-title {
+        font-size: 15px;
+      }
+      .floating-notice .notice-body {
+        font-size: 13px;
+        line-height: 1.6;
+      }
+    }
+    /* 隐藏video error */
+    video::-webkit-media-controls-error-display {
+      display: none !important;
+    }
+    video {
+      -webkit-media-controls-error-display: none !important;
+    }
+    video::-webkit-media-controls-enclosure {
+      overflow: hidden !important;
+    }
+    video::-internal-media-controls-overlay-enclosure {
+      display: none !important;
+    }
+
+    /* ===== 加载提示 ===== */
+    .loading-more-tip {
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      gap: 16px;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .loading-more-tip .tip-spinner {
+      width: 32px;
+      height: 32px;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      border-top-color: #fe2c55;
+      border-radius: 50%;
+      animation: tipSpin 0.8s linear infinite;
+      flex-shrink: 0;
+      position: relative;
+      left: 0;
+      top: 0;
+      transform: none;
+    }
+    @keyframes tipSpin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+    .loading-more-tip .tip-text {
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+    .loading-more-tip .tip-sub {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.3);
+      font-weight: 400;
+      text-align: center;
+    }
+    .end-tip {
+      width: 100%;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .end-tip .end-icon {
+      font-size: 36px;
+      margin-bottom: 4px;
+    }
+    .end-tip .end-text {
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+    .end-tip .end-sub {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="top-nav" id="topNav">
+    <span class="brand" id="brandTitle">果粒精选</span>
+    <div class="nav-tabs">
+      <div class="nav-item active" data-tab="video">视频
+        <div class="nav-indicator"></div>
+      </div>
+      <div class="nav-item" data-tab="image">图片
+        <div class="nav-indicator"></div>
+      </div>
+      <div class="nav-item" data-tab="game">游戏
+        <div class="nav-indicator"></div>
+      </div>
+    </div>
+    <button class="search-btn" id="searchBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+    </button>
+  </div>
+
+  <div class="feed-container" id="feedContainer"></div>
+
+  <!-- 游戏播放器 -->
+  <div class="game-player-overlay" id="gamePlayer">
+    <!-- 顶部导航 - 与主界面风格一致 -->
+    <div class="game-top-nav" id="gameTopNav">
+      <button class="game-back-btn" id="gameBackBtn">✕</button>
+      <div class="game-title-area">
+        <span class="game-title-text" id="gameTitleText">游戏</span>
+      </div>
+      <div class="game-nav-placeholder"></div>
+    </div>
+    <div class="game-video-wrapper" id="gameVideoWrapper">
+      <video id="gameVideo" playsinline webkit-playsinline muted></video>
+    </div>
+    <div class="game-ui-overlay" id="gameUI">
+      <div class="game-btn-group" id="gameBtnGroup"></div>
+      <div class="game-hint" id="gameHint">点击按钮继续</div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================================
+    // ★★★ 内容插入点 ★★★
+    // ============================================================
+    const videoList = [
+
+
+    
+      
+      // ★★★ 在此处插入您的实际内容 ★★★
+    ];
+
+    // ============================================================
+    // 核心逻辑
+    // ============================================================
+   
+    function isImageItem(item) { return item.images && item.images.trim() !== ''; }
+
+    function isGameItem(item) {
+      return item.game && item.game.trim() !== '' && item.nodes && item.nodes.length > 0;
+    }
+
+    const videoItems = videoList.filter(item => !isImageItem(item) && !isGameItem(item));
+    const imageItems = videoList.filter(item => isImageItem(item));
+    const gameItems = videoList.filter(item => isGameItem(item));
+
+    let currentTab = 'video';
+    let allVideos = [];
+    const container = document.getElementById('feedContainer');
+    const hlsInstances = [];
+
+    const CACHE_SIZE = 5;
+    let currentVisibleIndex = 0;
+    let isGameActive = false;
+
+    const SVG_MUTE =
+      `<svg viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>`;
+    const SVG_UNMUTE =
+      `<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>`;
+
+    let currentIndex = 0;
+    let audioUnmuted = false;
+
+    // ---- 游戏引擎 ----
+    let currentGameData = null;
+    let currentGameIndex = 0;
+    let currentNodeIndex = 0;
+    let gameLoopTimer = null;
+    let gameVideo = document.getElementById('gameVideo');
+    const gamePlayer = document.getElementById('gamePlayer');
+    const gameTitleText = document.getElementById('gameTitleText');
+    const gameBtnGroup = document.getElementById('gameBtnGroup');
+    const gameHint = document.getElementById('gameHint');
+    const gameBackBtn = document.getElementById('gameBackBtn');
+    const gameVideoWrapper = document.getElementById('gameVideoWrapper');
+    let currentTimeUpdateHandler = null;
+
+    function showRefreshOverlay() {
+      document.getElementById('refreshOverlay').classList.add('visible');
+    }
+
+    function hideRefreshOverlay() {
+      document.getElementById('refreshOverlay').classList.remove('visible');
+    }
+
+    // ---- 渲染游戏列表 ----
+    function renderGameTab() {
+      container.innerHTML = '';
+      allVideos = [];
+      if (gameItems.length === 0) {
+        const emptyDiv = document.createElement('div');
+        emptyDiv.className = 'game-container';
+        emptyDiv.innerHTML = `
+          <div class="game-card" style="text-align:center;padding:60px 24px;">
+            <div class="game-icon" style="font-size:48px;display:block;margin-bottom:12px;"></div>
+            <div class="game-name" style="font-size:20px;">暂无游戏</div>
+            <div class="game-desc" style="padding-left:0;color:rgba(255,255,255,0.3);margin-top:12px;">请在后台添加游戏内容</div>
+            <div class="glow-line"></div>
+          </div>
+        `;
+        container.appendChild(emptyDiv);
+        return;
+      }
+      const gameContainer = document.createElement('div');
+      gameContainer.className = 'game-container';
+      gameItems.forEach((item, idx) => {
+        const card = document.createElement('div');
+        card.className = 'game-card';
+        // 光源映射层
+        const light = document.createElement('div');
+        light.className = 'card-light';
+        card.appendChild(light);
+        // 边缘光晕
+        const edge = document.createElement('div');
+        edge.className = 'card-edge-glow';
+        card.appendChild(edge);
+        // 内容
+        const content = document.createElement('div');
+        content.innerHTML = `
+          <span class="game-icon"></span>
+          <span class="game-name">${escapeHTML(item.title)}</span>
+          <span class="game-badge">点击开始</span>
+          <div class="game-desc">${escapeHTML(item.desc) || '点击开始游戏'}</div>
+          <div class="glow-line"></div>
+        `;
+        card.appendChild(content);
+        // 鼠标移动 - 光源跟随
+        card.addEventListener('mousemove', (e) => {
+          const rect = card.getBoundingClientRect();
+          const x = ((e.clientX - rect.left) / rect.width * 100);
+          const y = ((e.clientY - rect.top) / rect.height * 100);
+          light.style.setProperty('--lx', x + '%');
+          light.style.setProperty('--ly', y + '%');
+        });
+        card.addEventListener('mouseleave', () => {
+          light.style.opacity = '0';
+        });
+        card.addEventListener('mouseenter', () => {
+          light.style.opacity = '1';
+        });
+        // 点击
+        card.addEventListener('click', function(e) {
+          const rect = this.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const ripple = document.createElement('div');
+          ripple.className = 'card-click-ripple';
+          ripple.style.left = (x - 30) + 'px';
+          ripple.style.top = (y - 30) + 'px';
+          ripple.style.width = '60px';
+          ripple.style.height = '60px';
+          this.appendChild(ripple);
+          setTimeout(() => ripple.remove(), 600);
+          startGame(idx);
+        });
+        gameContainer.appendChild(card);
+      });
+      container.appendChild(gameContainer);
+    }
+
+    // ---- 游戏控制 ----
+    function startGame(index) {
+      const data = gameItems[index];
+      if (!data || !data.game || !data.nodes || data.nodes.length === 0) return;
+      isGameActive = true;
+      currentGameData = data;
+      currentGameIndex = index;
+      currentNodeIndex = 0;
+
+      gameVideo.src = data.game;
+      gameVideo.load();
+      gameVideo.muted = false;
+      gameVideo.play().catch(() => {
+        gameVideo.muted = true;
+        gameVideo.play().catch(e => console.log('游戏视频播放失败', e));
+      });
+
+      gameVideo.onloadedmetadata = function() {
+        gameVideo.classList.remove('landscape', 'portrait');
+        if (gameVideo.videoWidth > gameVideo.videoHeight) {
+          gameVideo.classList.add('landscape');
+        } else {
+          gameVideo.classList.add('portrait');
+        }
+      };
+
+      gameTitleText.textContent = data.title || '游戏';
+      gamePlayer.classList.add('show');
+      showGameNode(0);
+    }
+
+    function hasChoices(node) {
+      return node.choices && Array.isArray(node.choices) && node.choices.length > 0;
+    }
+
+    // 按钮点击波纹（点击瞬间触发）
+    function createBtnRipple(btn, e, isPrimary) {
+      const rect = btn.getBoundingClientRect();
+      const x = (e ? e.clientX : rect.left + rect.width / 2) - rect.left;
+      const y = (e ? e.clientY : rect.top + rect.height / 2) - rect.top;
+      const ripple = document.createElement('span');
+      ripple.className = 'btn-ripple' + (isPrimary ? ' primary-ripple' : '');
+      ripple.style.left = (x - 20) + 'px';
+      ripple.style.top = (y - 20) + 'px';
+      ripple.style.width = '40px';
+      ripple.style.height = '40px';
+      btn.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 500);
+    }
+
+    function showGameNode(nodeIdx) {
+      if (!currentGameData || !currentGameData.nodes) return;
+      const nodes = currentGameData.nodes;
+
+      if (gameLoopTimer) { clearInterval(gameLoopTimer);
+        gameLoopTimer = null; }
+      if (currentTimeUpdateHandler) {
+        gameVideo.removeEventListener('timeupdate', currentTimeUpdateHandler);
+        currentTimeUpdateHandler = null;
+      }
+
+      if (nodeIdx >= nodes.length) {
+        gameHint.textContent = ' 游戏结束';
+        gameBtnGroup.innerHTML =
+          `<button class="game-btn primary" data-action="end">返回游戏列表</button>`;
+        if (gameVideo) gameVideo.pause();
+        gameBtnGroup.querySelectorAll('.game-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            createBtnRipple(btn, e, true);
+            endGame();
+          });
+        });
+        return;
+      }
+
+      const node = nodes[nodeIdx];
+      if (!node) {
+        gameHint.textContent = ' 游戏结束';
+        gameBtnGroup.innerHTML =
+          `<button class="game-btn primary" data-action="end">返回游戏列表</button>`;
+        if (gameVideo) gameVideo.pause();
+        gameBtnGroup.querySelectorAll('.game-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            createBtnRipple(btn, e, true);
+            endGame();
+          });
+        });
+        return;
+      }
+
+      currentNodeIndex = nodeIdx;
+      const start = node.start || 0;
+      const end = node.end || 0;
+      const recycle = node.recycle === 'y' || node.recycle === 'Y';
+      const hasMultiChoices = hasChoices(node);
+
+      if (gameVideo) {
+        gameVideo.currentTime = start;
+        gameVideo.play().catch(() => {});
+      }
+
+      let buttonsHTML = '';
+      let hintText = '';
+
+      if (hasMultiChoices) {
+        node.choices.forEach((choice, idx) => {
+          const nextIdx = choice.next !== undefined && choice.next !== null ? choice.next : nodes.length;
+          buttonsHTML +=
+            `<button class="game-btn primary" data-action="choice" data-next="${nextIdx}">${escapeHTML(choice.label || '选项' + (idx + 1))}</button>`;
+        });
+        hintText = '选择你喜欢的sex动作';
+      } else if (node.next !== undefined && node.next !== null && node.next < nodes.length) {
+        buttonsHTML =
+          `<button class="game-btn primary" data-action="next" data-next="${node.next}">${escapeHTML(node.label || '继续')}</button>`;
+        hintText = '点击按钮继续剧情';
+      } else {
+        buttonsHTML =
+          `<button class="game-btn primary" data-action="end">${escapeHTML(node.label || '结束')}</button>`;
+        hintText = ' 游戏结束';
+      }
+
+      gameBtnGroup.innerHTML = buttonsHTML;
+      gameHint.textContent = hintText;
+
+      // 绑定点击事件 - 每次点击都触发波纹
+      gameBtnGroup.querySelectorAll('.game-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isPrimary = btn.classList.contains('primary');
+          createBtnRipple(btn, e, isPrimary);
+
+          const action = btn.dataset.action;
+          if (action === 'next') {
+            const nextIdx = parseInt(btn.dataset.next);
+            if (!isNaN(nextIdx)) showGameNode(nextIdx);
+          } else if (action === 'choice') {
+            const nextIdx = parseInt(btn.dataset.next);
+            if (!isNaN(nextIdx)) showGameNode(nextIdx);
+          } else if (action === 'end') {
+            endGame();
+          }
+        });
+      });
+
+      if (recycle && end > start) {
+        gameLoopTimer = setInterval(() => {
+          if (gameVideo && gameVideo.currentTime >= end) {
+            gameVideo.currentTime = start;
+            gameVideo.play().catch(() => {});
+          }
+        }, 100);
+      } else if (!recycle && end > start) {
+        const onTimeUpdate = () => {
+          if (gameVideo && gameVideo.currentTime >= end) {
+            gameVideo.pause();
+            gameVideo.removeEventListener('timeupdate', onTimeUpdate);
+            if (currentTimeUpdateHandler === onTimeUpdate) {
+              currentTimeUpdateHandler = null;
+            }
+          }
+        };
+        if (gameVideo && gameVideo.currentTime >= end) {
+          gameVideo.pause();
+        } else {
+          currentTimeUpdateHandler = onTimeUpdate;
+          gameVideo.addEventListener('timeupdate', onTimeUpdate);
+        }
+      }
+      gameVideo.onclick = null;
+    }
+
+    function endGame() {
+      if (gameLoopTimer) { clearInterval(gameLoopTimer);
+        gameLoopTimer = null; }
+      if (currentTimeUpdateHandler) {
+        gameVideo.removeEventListener('timeupdate', currentTimeUpdateHandler);
+        currentTimeUpdateHandler = null;
+      }
+      if (gameVideo) {
+        gameVideo.pause();
+        gameVideo.src = '';
+        gameVideo.onclick = null;
+        gameVideo.onloadedmetadata = null;
+        gameVideo.classList.remove('landscape', 'portrait');
+      }
+      gamePlayer.classList.remove('show');
+      isGameActive = false;
+      currentGameData = null;
+      renderGameTab();
+    }
+
+    gameBackBtn.addEventListener('click', endGame);
+
+    // ---- 核心渲染引擎 ----
+    function shuffleArray(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function renderFeedByTab(tab) {
+      if (isGameActive) return;
+      observer.disconnect();
+      container.innerHTML = '';
+      allVideos = [];
+      hlsInstances.forEach(h => { if (h) h.destroy(); });
+      hlsInstances.length = 0;
+
+      if (tab === 'game') {
+        renderGameTab();
+        return;
+      }
+
+      let poolToRender = [];
+      let contentType = 'video';
+      if (tab === 'video') {
+        poolToRender = shuffleArray(videoItems);
+        contentType = 'video';
+      } else if (tab === 'image') {
+        poolToRender = shuffleArray(imageItems);
+        contentType = 'image';
+      } else {
+        return;
+      }
+
+      const initialCount = Math.min(CACHE_SIZE, poolToRender.length);
+      const initialItems = poolToRender.slice(0, initialCount);
+      const remainingItems = poolToRender.slice(initialCount);
+
+      window._feedPool = poolToRender;
+      window._feedRemaining = remainingItems;
+      window._feedLoadedCount = initialCount;
+
+      function renderItems(items, startIndex) {
+        items.forEach((item, offset) => {
+          const index = startIndex + offset;
+          renderSingleItem(item, index);
+        });
+      }
+
+      function renderSingleItem(item, index) {
+        const slide = document.createElement('div');
+        slide.className = 'video-slide';
+        slide.dataset.index = index;
+        const isImageMode = isImageItem(item);
+        if (isImageMode) slide.classList.add('image-mode');
+
+        const info = document.createElement('div');
+        info.className = 'slide-info';
+        info.innerHTML = `
+          <div class="slide-title">${escapeHTML(item.title)}</div>
+          <div class="slide-desc">${escapeHTML(item.desc).replace(/\n/g, '<br>')}</div>
+          <div class="progress-container">
+            <div class="progress-track">
+              <div class="progress-buffer"></div>
+              <div class="progress-fill"></div>
+              <div class="progress-thumb"></div>
+            </div>
+            <div class="progress-time-tooltip">00:00</div>
+          </div>
+        `;
+
+        let imageProgressHTML = '';
+        if (isImageMode) {
+          const imgUrls = item.images.split(',').map(u => u.trim()).filter(u => u);
+          imageProgressHTML = `
+            <div class="image-progress">
+              <div class="image-progress-track">
+                <div class="image-progress-fill" style="width:0%"></div>
+              </div>
+              <span class="image-progress-counter">1/${imgUrls.length}</span>
+            </div>
+          `;
+        }
+
+        const actionBar = document.createElement('div');
+        actionBar.className = 'action-bar';
+        actionBar.innerHTML = `
+          <button class="action-btn like-btn" data-index="${index}">
+            <span class="action-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span>
+            <span class="like-count">${formatLikes(item.likes)}</span>
+          </button>
+        `;
+
+        let muteBtn = null;
+        if (!isImageMode) {
+          muteBtn = document.createElement('button');
+          muteBtn.className = 'mute-btn';
+          muteBtn.innerHTML = SVG_MUTE;
+          muteBtn.title = '开启声音';
+        }
+
+        const pauseIcon = document.createElement('div');
+        pauseIcon.className = 'pause-icon';
+        pauseIcon.innerHTML = `<div class="pause-circle"><div class="pause-triangle"></div></div>`;
+        const speedIndicator = document.createElement('div');
+        speedIndicator.className = 'speed-indicator';
+        speedIndicator.innerHTML =
+          `<span><span class="speed-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fe2c55"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg></span> 3x</span>`;
+        const loadingSpinner = document.createElement('div');
+        loadingSpinner.className = 'loading-spinner';
+        const heart = document.createElement('div');
+        heart.className = 'double-heart';
+        heart.innerHTML = '❤️';
+
+        if (!isImageMode) {
+          const video = document.createElement('video');
+          video.className = 'video-player';
+          video.autoplay = false;
+          video.playsInline = true;
+          video.setAttribute('playsinline', '');
+          video.setAttribute('webkit-playsinline', '');
+          video.preload = 'metadata';
+          video.loop = true;
+          video.muted = true;
+          video.disableRemotePlayback = true;
+          slide.appendChild(video);
+        } else {
+          const imgUrls = item.images.split(',').map(u => u.trim()).filter(u => u);
+          const gallery = document.createElement('div');
+          gallery.className = 'image-gallery';
+          imgUrls.forEach(imgUrl => {
+            const img = document.createElement('img');
+            img.src = imgUrl;
+            img.loading = 'lazy';
+            img.draggable = false;
+            gallery.appendChild(img);
+          });
+          slide.appendChild(gallery);
+        }
+
+        slide.appendChild(info);
+        if (isImageMode) slide.insertAdjacentHTML('beforeend', imageProgressHTML);
+        slide.appendChild(actionBar);
+        if (muteBtn) slide.appendChild(muteBtn);
+        slide.appendChild(pauseIcon);
+        slide.appendChild(speedIndicator);
+        slide.appendChild(loadingSpinner);
+        slide.appendChild(heart);
+        container.appendChild(slide);
+
+        const track = info.querySelector('.progress-track');
+        const buffer = info.querySelector('.progress-buffer');
+        const fill = info.querySelector('.progress-fill');
+        const thumb = info.querySelector('.progress-thumb');
+        const tooltip = info.querySelector('.progress-time-tooltip');
+        const videoEl = isImageMode ? null : slide.querySelector('video');
+        const galleryEl = isImageMode ? slide.querySelector('.image-gallery') : null;
+
+        const slideData = {
+          slide,
+          video: videoEl,
+          muteBtn,
+          gallery: galleryEl,
+          likeBtn: actionBar.querySelector('.like-btn'),
+          heart,
+          track,
+          buffer,
+          fill,
+          thumb,
+          tooltip,
+          pauseIcon,
+          speedIndicator,
+          loadingSpinner,
+          isImage: isImageMode,
+          data: item,
+          index: index,
+          loaded: true
+        };
+        allVideos.push(slideData);
+
+        if (!isImageMode) {
+          setupHLS(videoEl, item.url, index);
+          setupVideoEvents(index);
+          setupProgressDrag(index);
+        } else {
+          setupImageGallery(index);
+        }
+      }
+
+      renderItems(initialItems, 0);
+
+      if (remainingItems.length > 0) {
+        const tip = createLoadingTip(contentType);
+        container.appendChild(tip);
+      } else {
+        const endTip = createEndTip(contentType);
+        container.appendChild(endTip);
+      }
+
+      currentIndex = 0;
+      document.querySelectorAll('.video-slide:not(.hidden-slide)').forEach(slide => observer.observe(slide));
+      initLikes();
+      initMuteButtons();
+
+      setTimeout(() => {
+        if (allVideos.length > 0) {
+          const first = allVideos[0];
+          if (!first.isImage && first.video) {
+            playIndex(0);
+            attemptAudioPlay(0);
+          }
+        }
+      }, 400);
+    }
+
+    function loadMoreIfNeeded(index) {
+      const total = window._feedPool ? window._feedPool.length : 0;
+      const loaded = window._feedLoadedCount || 0;
+      if (index >= loaded - 2 && loaded < total) {
+        const itemsToLoad = Math.min(CACHE_SIZE, total - loaded);
+        const newItems = window._feedPool.slice(loaded, loaded + itemsToLoad);
+        if (newItems.length > 0) {
+          const tip = document.getElementById('loadingMoreTip');
+          if (tip) tip.remove();
+
+          newItems.forEach((item, offset) => {
+            const realIndex = loaded + offset;
+            renderSingleItem(item, realIndex);
+          });
+          window._feedLoadedCount = loaded + newItems.length;
+
+          document.querySelectorAll('.video-slide:not(.hidden-slide)').forEach(slide => {
+            observer.unobserve(slide);
+            observer.observe(slide);
+          });
+
+          if (window._feedLoadedCount < total) {
+            const newTip = createLoadingTip(currentTab === 'video' ? 'video' : 'image');
+            container.appendChild(newTip);
+          } else {
+            const endTip = createEndTip(currentTab === 'video' ? 'video' : 'image');
+            container.appendChild(endTip);
+          }
+        }
+      }
+    }
+
+    function createLoadingTip(type) {
+      const tip = document.createElement('div');
+      tip.className = 'loading-more-tip';
+      tip.id = 'loadingMoreTip';
+      const content = type === 'video' ? '视频' : '图片';
+      tip.innerHTML = `
+        <div class="tip-spinner"></div>
+        <div class="tip-text">${content}内容加载中</div>
+        <div class="tip-sub">向下滑动探索更多</div>
+      `;
+      return tip;
+    }
+
+    function createEndTip(type) {
+      const tip = document.createElement('div');
+      tip.className = 'end-tip';
+      tip.id = 'endTip';
+      const content = type === 'video' ? '视频' : '图片';
+      tip.innerHTML = `
+        <div class="end-icon">🏁</div>
+        <div class="end-text">已到底部</div>
+        <div class="end-sub">没有更多${content}内容了</div>
+      `;
+      return tip;
+    }
+
+    function renderSingleItem(item, index) {
+      const slide = document.createElement('div');
+      slide.className = 'video-slide';
+      slide.dataset.index = index;
+      const isImageMode = isImageItem(item);
+      if (isImageMode) slide.classList.add('image-mode');
+
+      const info = document.createElement('div');
+      info.className = 'slide-info';
+      info.innerHTML = `
+        <div class="slide-title">${escapeHTML(item.title)}</div>
+        <div class="slide-desc">${escapeHTML(item.desc).replace(/\n/g, '<br>')}</div>
+        <div class="progress-container">
+          <div class="progress-track">
+            <div class="progress-buffer"></div>
+            <div class="progress-fill"></div>
+            <div class="progress-thumb"></div>
+          </div>
+          <div class="progress-time-tooltip">00:00</div>
+        </div>
+      `;
+
+      let imageProgressHTML = '';
+      if (isImageMode) {
+        const imgUrls = item.images.split(',').map(u => u.trim()).filter(u => u);
+        imageProgressHTML = `
+          <div class="image-progress">
+            <div class="image-progress-track">
+              <div class="image-progress-fill" style="width:0%"></div>
+            </div>
+            <span class="image-progress-counter">1/${imgUrls.length}</span>
+          </div>
+        `;
+      }
+
+      const actionBar = document.createElement('div');
+      actionBar.className = 'action-bar';
+      actionBar.innerHTML = `
+        <button class="action-btn like-btn" data-index="${index}">
+          <span class="action-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span>
+          <span class="like-count">${formatLikes(item.likes)}</span>
+        </button>
+      `;
+
+      let muteBtn = null;
+      if (!isImageMode) {
+        muteBtn = document.createElement('button');
+        muteBtn.className = 'mute-btn';
+        muteBtn.innerHTML = SVG_MUTE;
+        muteBtn.title = '开启声音';
+      }
+
+      const pauseIcon = document.createElement('div');
+      pauseIcon.className = 'pause-icon';
+      pauseIcon.innerHTML = `<div class="pause-circle"><div class="pause-triangle"></div></div>`;
+      const speedIndicator = document.createElement('div');
+      speedIndicator.className = 'speed-indicator';
+      speedIndicator.innerHTML =
+        `<span><span class="speed-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fe2c55"><path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/></svg></span> 3x</span>`;
+      const loadingSpinner = document.createElement('div');
+      loadingSpinner.className = 'loading-spinner';
+      const heart = document.createElement('div');
+      heart.className = 'double-heart';
+      heart.innerHTML = '❤️';
+
+      if (!isImageMode) {
+        const video = document.createElement('video');
+        video.className = 'video-player';
+        video.autoplay = false;
+        video.playsInline = true;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
+        video.preload = 'metadata';
+        video.loop = true;
+        video.muted = true;
+        video.disableRemotePlayback = true;
+        slide.appendChild(video);
+      } else {
+        const imgUrls = item.images.split(',').map(u => u.trim()).filter(u => u);
+        const gallery = document.createElement('div');
+        gallery.className = 'image-gallery';
+        imgUrls.forEach(imgUrl => {
+          const img = document.createElement('img');
+          img.src = imgUrl;
+          img.loading = 'lazy';
+          img.draggable = false;
+          gallery.appendChild(img);
+        });
+        slide.appendChild(gallery);
+      }
+
+      slide.appendChild(info);
+      if (isImageMode) slide.insertAdjacentHTML('beforeend', imageProgressHTML);
+      slide.appendChild(actionBar);
+      if (muteBtn) slide.appendChild(muteBtn);
+      slide.appendChild(pauseIcon);
+      slide.appendChild(speedIndicator);
+      slide.appendChild(loadingSpinner);
+      slide.appendChild(heart);
+      container.appendChild(slide);
+
+      const track = info.querySelector('.progress-track');
+      const buffer = info.querySelector('.progress-buffer');
+      const fill = info.querySelector('.progress-fill');
+      const thumb = info.querySelector('.progress-thumb');
+      const tooltip = info.querySelector('.progress-time-tooltip');
+      const videoEl = isImageMode ? null : slide.querySelector('video');
+      const galleryEl = isImageMode ? slide.querySelector('.image-gallery') : null;
+
+      const slideData = {
+        slide,
+        video: videoEl,
+        muteBtn,
+        gallery: galleryEl,
+        likeBtn: actionBar.querySelector('.like-btn'),
+        heart,
+        track,
+        buffer,
+        fill,
+        thumb,
+        tooltip,
+        pauseIcon,
+        speedIndicator,
+        loadingSpinner,
+        isImage: isImageMode,
+        data: item,
+        index: index,
+        loaded: true
+      };
+      allVideos.push(slideData);
+
+      if (!isImageMode) {
+        setupHLS(videoEl, item.url, index);
+        setupVideoEvents(index);
+        setupProgressDrag(index);
+      } else {
+        setupImageGallery(index);
+      }
+    }
+
+    // ---- 辅助函数 ----
+    function setupHLS(video, url, index) {
+      if (window.Hls && Hls.isSupported()) {
+        const hls = new Hls({ enableWorker: true, lowLatencyMode: true });
+        hls.loadSource(url);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) { video.src = url; }
+        });
+        hlsInstances[index] = hls;
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = url;
+      } else {
+        video.src = url;
+      }
+    }
+
+    function escapeHTML(str) {
+      return String(str || '').replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+        "'": '&#39;' } [m]));
+    }
+
+    function formatLikes(num) {
+      if (num >= 10000) return (num / 10000).toFixed(1) + '万';
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'k';
+      return num;
+    }
+
+    function formatTime(seconds) {
+      if (!isFinite(seconds)) return '00:00';
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return m + ':' + s.toString().padStart(2, '0');
+    }
+
+    function showPauseIcon(index) {
+      const item = allVideos[index];
+      if (!item) return;
+      item.pauseIcon.classList.remove('hiding');
+      item.pauseIcon.classList.add('visible');
+    }
+
+    function hidePauseIcon(index) {
+      const item = allVideos[index];
+      if (!item) return;
+      item.pauseIcon.classList.add('hiding');
+      setTimeout(() => { item.pauseIcon.classList.remove('visible', 'hiding'); }, 200);
+    }
+
+    function showSpeedIndicator(index) {
+      const item = allVideos[index];
+      if (item) item.speedIndicator.classList.add('visible');
+    }
+
+    function hideSpeedIndicator(index) {
+      const item = allVideos[index];
+      if (item) item.speedIndicator.classList.remove('visible');
+    }
+
+    function showLoadingSpinner(index) {
+      const item = allVideos[index];
+      if (item) item.loadingSpinner.classList.add('visible');
+    }
+
+    function hideLoadingSpinner(index) {
+      const item = allVideos[index];
+      if (item) item.loadingSpinner.classList.remove('visible');
+    }
+
+    function setupProgressDrag(index) {
+      const item = allVideos[index];
+      if (!item || item.isImage) return;
+      const video = item.video;
+      const track = item.track;
+      const fill = item.fill;
+      const thumb = item.thumb;
+      const buffer = item.buffer;
+      const tooltip = item.tooltip;
+      let isDragging = false;
+
+      function getPercent(e) {
+        const rect = track.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        let pct = (clientX - rect.left) / rect.width;
+        return Math.max(0, Math.min(1, pct));
+      }
+
+      function updateProgress(pct) {
+        const clampedPct = Math.min(1, Math.max(0, pct));
+        fill.style.width = (clampedPct * 100) + '%';
+        thumb.style.left = (clampedPct * 100) + '%';
+        video.currentTime = clampedPct * (video.duration || 0);
+      }
+
+      function showTooltip(pct) {
+        const rect = track.getBoundingClientRect();
+        const leftPx = pct * rect.width;
+        tooltip.style.left = leftPx + 'px';
+        tooltip.textContent = formatTime(pct * (video.duration || 0));
+        tooltip.classList.add('visible');
+      }
+
+      function hideTooltip() { tooltip.classList.remove('visible'); }
+
+      function startDrag(e) {
+        e.preventDefault();
+        isDragging = true;
+        track.classList.add('dragging');
+        thumb.classList.add('dragging');
+        const pct = getPercent(e);
+        updateProgress(pct);
+        showTooltip(pct);
+      }
+
+      function onDrag(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        const pct = getPercent(e);
+        updateProgress(pct);
+        showTooltip(pct);
+      }
+
+      function endDrag(e) {
+        if (!isDragging) return;
+        isDragging = false;
+        track.classList.remove('dragging');
+        thumb.classList.remove('dragging');
+        hideTooltip();
+        showLoadingSpinner(index);
+        if (video.error) { video.load(); }
+      }
+
+      track.addEventListener('touchstart', startDrag, { passive: false });
+      track.addEventListener('touchmove', onDrag, { passive: false });
+      track.addEventListener('touchend', endDrag);
+      track.addEventListener('touchcancel', endDrag);
+      track.addEventListener('mousedown', startDrag);
+      document.addEventListener('mousemove', onDrag);
+      document.addEventListener('mouseup', endDrag);
+
+      video.addEventListener('timeupdate', () => {
+        if (!isDragging && video.readyState >= 2 && video.duration > 0 && isFinite(video.duration)) {
+          const pct = Math.min(1, Math.max(0, video.currentTime / video.duration));
+          fill.style.width = (pct * 100) + '%';
+          thumb.style.left = (pct * 100) + '%';
+        } else if (!isDragging && (!video.duration || video.duration <= 0 || !isFinite(video.duration))) {
+          fill.style.width = '0%';
+          thumb.style.left = '0%';
+        }
+      });
+
+      video.addEventListener('timeupdate', () => {
+        if (video.buffered && video.duration && isFinite(video.duration)) {
+          const bufferedEnd = video.buffered.end(video.buffered.length - 1);
+          const pct = Math.min(100, Math.max(0, (bufferedEnd / video.duration) * 100));
+          buffer.style.width = pct + '%';
+        }
+      });
+
+      video.addEventListener('canplay', () => { if (index === currentIndex) hideLoadingSpinner(index); });
+      video.addEventListener('playing', () => { if (index === currentIndex) hideLoadingSpinner(index); });
+    }
+
+    function playIndex(index) {
+      if (index < 0 || index >= allVideos.length) return;
+      currentIndex = index;
+      allVideos.forEach((item, i) => {
+        if (i === index && !item.isImage && item.video) {
+          item.video.preload = 'auto';
+          item.video.play().catch(e => {});
+        } else if (!item.isImage && item.video) {
+          item.video.pause();
+          item.video.preload = 'metadata';
+        }
+      });
+      loadMoreIfNeeded(index);
+    }
+
+    function attemptAudioPlay(index) {
+      const item = allVideos[index];
+      if (!item || item.isImage || !item.video) return;
+      const video = item.video;
+      const muteBtn = item.muteBtn;
+      video.muted = false;
+      video.play().then(() => {
+        if (muteBtn) muteBtn.innerHTML = SVG_UNMUTE;
+        video.muted = false;
+      }).catch(() => {
+        video.muted = true;
+        video.play().catch(e => {});
+        if (muteBtn) muteBtn.innerHTML = SVG_MUTE;
+      });
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const slideEl = entry.target;
+        if (slideEl.id === 'loadingMoreTip' || slideEl.id === 'endTip') {
+          if (slideEl.id === 'loadingMoreTip' && entry.isIntersecting) {
+            const total = window._feedPool ? window._feedPool.length : 0;
+            const loaded = window._feedLoadedCount || 0;
+            if (loaded < total) {
+              loadMoreIfNeeded(loaded);
+            }
+          }
+          return;
+        }
+        const index = allVideos.findIndex(item => item.slide === slideEl);
+        if (index === -1) return;
+        if (entry.isIntersecting) {
+          const item = allVideos[index];
+          if (!item.isImage && item.video) {
+            item.video.preload = 'auto';
+            playIndex(index);
+            if (!slideEl.dataset.audioTried) {
+              attemptAudioPlay(index);
+              slideEl.dataset.audioTried = 'true';
+            }
+          } else {
+            currentIndex = index;
+          }
+          loadMoreIfNeeded(index);
+        } else {
+          const item = allVideos[index];
+          if (!item.isImage && item.video) item.video.preload = 'metadata';
+        }
+      });
+    }, { threshold: 0.5, rootMargin: '200px' });
+
+    function setupVideoEvents(index) {
+      const item = allVideos[index];
+      if (!item || item.isImage) return;
+      const video = item.video;
+      const slide = item.slide;
+      let clickTimer = null;
+      let longPressTimer = null;
+      let isLongPress = false;
+      let wasLongPress = false;
+
+      video.addEventListener('play', () => {
+        if (index === currentIndex) { hidePauseIcon(index);
+          hideLoadingSpinner(index); }
+      });
+      video.addEventListener('pause', () => { if (index === currentIndex) showPauseIcon(index); });
+      video.addEventListener('waiting', () => { if (index === currentIndex) showLoadingSpinner(index); });
+      video.addEventListener('canplay', () => { if (index === currentIndex) hideLoadingSpinner(index); });
+      video.addEventListener('playing', () => { if (index === currentIndex) hideLoadingSpinner(index); });
+      video.addEventListener('seeking', () => { if (index === currentIndex) hideLoadingSpinner(index); });
+      video.addEventListener('seeked', () => { if (index === currentIndex) { hideLoadingSpinner(index); } });
+      video.addEventListener('error', () => {});
+
+      function startLongPress(e) {
+        if (e.target.closest('.progress-container') || e.target.closest('.action-btn') || e.target.closest('.mute-btn'))
+          return;
+        isLongPress = false;
+        wasLongPress = false;
+        longPressTimer = setTimeout(() => {
+          isLongPress = true;
+          video.playbackRate = 3;
+          showSpeedIndicator(index);
+        }, 500);
+      }
+
+      function endLongPress(e) {
+        if (longPressTimer) { clearTimeout(longPressTimer);
+          longPressTimer = null; }
+        if (isLongPress) {
+          video.playbackRate = 1;
+          hideSpeedIndicator(index);
+          isLongPress = false;
+          wasLongPress = true;
+          setTimeout(() => { wasLongPress = false; }, 300);
+        }
+      }
+
+      function handleClick(e) {
+        if (e.target.closest('.action-btn') || e.target.closest('.mute-btn') || e.target.closest('.progress-container'))
+          return;
+        if (isLongPress) return;
+        if (wasLongPress) return;
+        if (clickTimer) {
+          clearTimeout(clickTimer);
+          clickTimer = null;
+          handleDoubleClick(e);
+        } else {
+          clickTimer = setTimeout(() => {
+            clickTimer = null;
+            if (video.paused) { video.play().catch(e => {}); } else { video.pause(); }
+          }, 250);
+        }
+      }
+
+      function handleDoubleClick(e) {
+        const btn = item.likeBtn;
+        if (!btn.classList.contains('liked')) {
+          btn.classList.add('liked');
+          const dataItem = allVideos[index]?.data;
+          if (dataItem) {
+            dataItem.likes++;
+            btn.querySelector('.like-count').textContent = formatLikes(dataItem.likes);
+          }
+        }
+        showHeart(index);
+      }
+
+      slide.addEventListener('touchstart', startLongPress, { passive: false });
+      slide.addEventListener('touchend', endLongPress);
+      slide.addEventListener('touchmove', endLongPress, { passive: false });
+      slide.addEventListener('touchcancel', endLongPress, { passive: false });
+      slide.addEventListener('mousedown', startLongPress);
+      slide.addEventListener('mouseup', endLongPress);
+      slide.addEventListener('mouseleave', endLongPress);
+      slide.addEventListener('click', handleClick);
+      slide.addEventListener('contextmenu', e => e.preventDefault());
+    }
+
+    function setupImageGallery(index) {
+      const item = allVideos[index];
+      if (!item || !item.isImage) return;
+      const gallery = item.gallery;
+      if (!gallery) return;
+      const images = gallery.querySelectorAll('img');
+      if (images.length === 0) return;
+      const progressFill = item.slide.querySelector('.image-progress-fill');
+      const counter = item.slide.querySelector('.image-progress-counter');
+
+      function updateImageProgress() {
+        const imgWidth = gallery.offsetWidth || 1;
+        const scrolled = gallery.scrollLeft;
+        const current = Math.round(scrolled / imgWidth);
+        const pct = images.length > 1 ? (current / (images.length - 1)) * 100 : 100;
+        if (progressFill) progressFill.style.width = pct + '%';
+        if (counter) counter.textContent = (current + 1) + '/' + images.length;
+      }
+      gallery.addEventListener('scroll', updateImageProgress, { passive: true });
+      setTimeout(updateImageProgress, 50);
+    }
+
+    function initLikes() {
+      document.querySelectorAll('.like-btn').forEach(btn => {
+        btn.removeEventListener('click', likeHandler);
+        btn.addEventListener('click', likeHandler);
+      });
+    }
+
+    function likeHandler(e) {
+      e.stopPropagation();
+      const btn = e.currentTarget;
+      const index = Number(btn.dataset.index);
+      const item = allVideos[index]?.data;
+      if (!item) return;
+      const isLiked = btn.classList.contains('liked');
+      if (isLiked) {
+        item.likes--;
+        btn.classList.remove('liked');
+      } else {
+        item.likes++;
+        btn.classList.add('liked');
+        showHeart(index);
+      }
+      btn.querySelector('.like-count').textContent = formatLikes(item.likes);
+    }
+
+    function showHeart(index) {
+      const item = allVideos[index];
+      if (!item) return;
+      if (item.isImage) return;
+      const heart = item.heart;
+      heart.style.animation = 'none';
+      void heart.offsetWidth;
+      heart.style.animation = 'heartBoom 0.6s ease forwards';
+    }
+
+    function initMuteButtons() {
+      document.querySelectorAll('.mute-btn').forEach(btn => {
+        btn.removeEventListener('click', muteHandler);
+        btn.addEventListener('click', muteHandler);
+      });
+    }
+
+    function muteHandler(e) {
+      e.stopPropagation();
+      const btn = e.currentTarget;
+      const slide = btn.closest('.video-slide');
+      const index = allVideos.findIndex(item => item.slide === slide);
+      if (index === -1) return;
+      const item = allVideos[index];
+      if (item.isImage || !item.video) return;
+      const video = item.video;
+      if (video.muted) {
+        video.muted = false;
+        btn.innerHTML = SVG_UNMUTE;
+      } else {
+        video.muted = true;
+        btn.innerHTML = SVG_MUTE;
+      }
+    }
+
+    function switchTab(tab) {
+      if (tab === currentTab) return;
+      currentTab = tab;
+      document.querySelectorAll('.nav-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.tab === tab);
+      });
+      if (tab === 'game') {
+        renderGameTab();
+        return;
+      }
+      renderFeedByTab(tab);
+    }
+
+    // ---- 初始化 ----
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = '该功能正在更新中，敬请期待';
+    document.body.appendChild(toast);
+
+    document.getElementById('searchBtn').addEventListener('click', () => {
+      toast.textContent = '该功能正在更新中，敬请期待';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    });
+
+    document.querySelectorAll('.nav-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const tab = el.dataset.tab;
+        switchTab(tab);
+      });
+    });
+
+    document.getElementById('brandTitle').addEventListener('click', () => {
+      showRefreshOverlay();
+      setTimeout(() => {
+        const url = window.location.href.split('?')[0] + '?t=' + Date.now();
+        window.location.href = url;
+      }, 600);
+    });
+
+    renderFeedByTab('video');
+
+    setTimeout(() => {
+      if (allVideos.length > 0) {
+        const first = allVideos[0];
+        if (!first.isImage && first.video) {
+          playIndex(0);
+          attemptAudioPlay(0);
+        }
+      }
+    }, 500);
+
+    function unmuteAll() {
+      if (audioUnmuted) return;
+      audioUnmuted = true;
+      allVideos.forEach((item) => {
+        if (!item.isImage && item.video) {
+          item.video.muted = false;
+          if (item.muteBtn) { item.muteBtn.innerHTML = SVG_UNMUTE; }
+        }
+      });
+    }
+    document.addEventListener('touchstart', unmuteAll, { once: true });
+    document.addEventListener('click', unmuteAll, { once: true });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = Math.min(currentIndex + 1, allVideos.length - 1);
+        const slide = allVideos[next]?.slide;
+        if (slide && !slide.classList.contains('hidden-slide')) {
+          slide.scrollIntoView({ behavior: 'smooth' });
+        }
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = Math.max(currentIndex - 1, 0);
+        const slide = allVideos[prev]?.slide;
+        if (slide && !slide.classList.contains('hidden-slide')) {
+          slide.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    });
+
+    let lastScrollTop = 0;
+    container.addEventListener('scroll', () => {
+      const scrollTop = container.scrollTop;
+      if (scrollTop < 10 && lastScrollTop > 10) {
+        document.querySelectorAll('.video-slide:not(.hidden-slide)').forEach(slide => {
+          observer.unobserve(slide);
+          observer.observe(slide);
+        });
+      }
+      lastScrollTop = scrollTop;
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        allVideos.forEach(item => { if (!item.isImage && item.video) item.video.pause(); });
+      }
+    });
+
+    window.addEventListener('pagehide', () => {
+      hlsInstances.forEach(h => { if (h) h.destroy(); });
+      if (gameLoopTimer) { clearInterval(gameLoopTimer);
+        gameLoopTimer = null; }
+      if (currentTimeUpdateHandler) {
+        gameVideo.removeEventListener('timeupdate', currentTimeUpdateHandler);
+        currentTimeUpdateHandler = null;
+      }
+    });
+
+    // 悬浮公告
+    document.addEventListener('DOMContentLoaded', function() {
+      const notice = document.getElementById('floatingNotice');
+      if (notice) {
+        notice.classList.add('show');
+        setTimeout(function() { notice.classList.remove('show'); }, 4000);
+      }
+    });
+
+    document.getElementById('floatingNotice').addEventListener('click', function(e) {
+      this.classList.remove('show');
+    });
+  </script>
+
+  <!-- 悬浮公告 -->
+  <div class="floating-notice" id="floatingNotice">
+    <div class="notice-title">❤ 🔞 公告 🔞 ❤</div>
+    <div class="notice-body">欢迎来到果粒精选！<br><br>本网站旨在提供简洁快捷、无广告的体验环境<br>感谢大家的陪伴与支持<br><br>精彩内容加载中，<br>向下滑动探索更多</div>
+  </div>
+
+  <div class="refresh-overlay" id="refreshOverlay">
+    <div class="refresh-spinner"></div>
+    <div class="refresh-text">刷新中</div>
+  </div>
+</body>
+</html>
